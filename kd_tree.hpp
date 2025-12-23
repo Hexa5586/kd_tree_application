@@ -8,7 +8,7 @@
 /**
  * KDNode类模板
  */
-template <int K, typename T>
+template <typename T, size_t K>
 class KDNode {
 public:
     std::array<T, K> point;
@@ -22,20 +22,20 @@ public:
 /**
  * KDTree类模板
  */
-template <int K, typename T>
+template <typename T, size_t K>
 class KDTree {
 
 private:
-    KDNode<K, T>* root;
+    KDNode<T, K>* root;
 
     // 内部辅助递归函数
-    void clear(KDNode<K, T>* node);
-    KDNode<K, T>* insertRecursive(KDNode<K, T>* node, const std::array<T, K>& p, int depth);
-    bool searchRecursive(KDNode<K, T>* node, const std::array<T, K>& p, int depth) const;
-    KDNode<K, T>* findMin(KDNode<K, T>* node, int dim, int depth);
-    KDNode<K, T>* removeRecursive(KDNode<K, T>* node, const std::array<T, K>& p, int depth);
-    void printSubtree(KDNode<K, T>* node, int depth) const; // 对应原私有 display
-    void rangeSearchRecursive(KDNode<K, T>* node, const std::array<T, K>& low, const std::array<T, K>& high, int depth, std::vector<std::array<T, K>>& results) const;
+    void clear(KDNode<T, K>* node);
+    KDNode<T, K>* insertRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth);
+    bool searchRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) const;
+    KDNode<T, K>* findMin(KDNode<T, K>* node, int dim, int depth);
+    KDNode<T, K>* removeRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth);
+    void printSubtree(KDNode<T, K>* node, int depth) const;
+    void rangeSearchRecursive(KDNode<T, K>* node, const std::array<T, K>& low, const std::array<T, K>& high, int depth, std::vector<std::array<T, K>>& results) const;
 
 public:
     KDTree();
@@ -49,16 +49,16 @@ public:
 };
 
 
-template <int K, typename T>
-KDTree<K, T>::KDTree() : root(nullptr) {}
+template <typename T, size_t K>
+KDTree<T, K>::KDTree() : root(nullptr) {}
 
-template <int K, typename T>
-KDTree<K, T>::~KDTree() {
+template <typename T, size_t K>
+KDTree<T, K>::~KDTree() {
     clear(root);
 }
 
-template <int K, typename T>
-void KDTree<K, T>::clear(KDNode<K, T>* node) {
+template <typename T, size_t K>
+void KDTree<T, K>::clear(KDNode<T, K>* node) {
     if (!node) return;
     clear(node->left);
     clear(node->right);
@@ -66,9 +66,9 @@ void KDTree<K, T>::clear(KDNode<K, T>* node) {
 }
 
 // 插入逻辑
-template <int K, typename T>
-KDNode<K, T>* KDTree<K, T>::insertRecursive(KDNode<K, T>* node, const std::array<T, K>& p, int depth) {
-    if (node == nullptr) return new KDNode<K, T>(p);
+template <typename T, size_t K>
+KDNode<T, K>* KDTree<T, K>::insertRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) {
+    if (node == nullptr) return new KDNode<T, K>(p);
 
     int cd = depth % K;
     if (p[cd] < node->point[cd])
@@ -79,14 +79,14 @@ KDNode<K, T>* KDTree<K, T>::insertRecursive(KDNode<K, T>* node, const std::array
     return node;
 }
 
-template <int K, typename T>
-void KDTree<K, T>::insert(const std::array<T, K>& p) {
+template <typename T, size_t K>
+void KDTree<T, K>::insert(const std::array<T, K>& p) {
     root = insertRecursive(root, p, 0);
 }
 
 // 查找逻辑
-template <int K, typename T>
-bool KDTree<K, T>::searchRecursive(KDNode<K, T>* node, const std::array<T, K>& p, int depth) const {
+template <typename T, size_t K>
+bool KDTree<T, K>::searchRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) const {
     if (node == nullptr) return false;
     if (node->point == p) return true;
 
@@ -97,14 +97,14 @@ bool KDTree<K, T>::searchRecursive(KDNode<K, T>* node, const std::array<T, K>& p
         return searchRecursive(node->right, p, depth + 1);
 }
 
-template <int K, typename T>
-bool KDTree<K, T>::search(const std::array<T, K>& p) const {
+template <typename T, size_t K>
+bool KDTree<T, K>::search(const std::array<T, K>& p) const {
     return searchRecursive(root, p, 0);
 }
 
 // 查找指定维度最小值
-template <int K, typename T>
-KDNode<K, T>* KDTree<K, T>::findMin(KDNode<K, T>* node, int dim, int depth) {
+template <typename T, size_t K>
+KDNode<T, K>* KDTree<T, K>::findMin(KDNode<T, K>* node, int dim, int depth) {
     if (node == nullptr) return nullptr;
 
     int cd = depth % K;
@@ -113,28 +113,28 @@ KDNode<K, T>* KDTree<K, T>::findMin(KDNode<K, T>* node, int dim, int depth) {
         return findMin(node->left, dim, depth + 1);
     }
 
-    KDNode<K, T>* leftMin = findMin(node->left, dim, depth + 1);
-    KDNode<K, T>* rightMin = findMin(node->right, dim, depth + 1);
+    KDNode<T, K>* leftMin = findMin(node->left, dim, depth + 1);
+    KDNode<T, K>* rightMin = findMin(node->right, dim, depth + 1);
     
-    KDNode<K, T>* res = node;
+    KDNode<T, K>* res = node;
     if (leftMin && leftMin->point[dim] < res->point[dim]) res = leftMin;
     if (rightMin && rightMin->point[dim] < res->point[dim]) res = rightMin;
     return res;
 }
 
 // 删除逻辑
-template <int K, typename T>
-KDNode<K, T>* KDTree<K, T>::removeRecursive(KDNode<K, T>* node, const std::array<T, K>& p, int depth) {
+template <typename T, size_t K>
+KDNode<T, K>* KDTree<T, K>::removeRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) {
     if (node == nullptr) return nullptr;
 
     int cd = depth % K;
     if (node->point == p) {
         if (node->right != nullptr) {
-            KDNode<K, T>* minNode = findMin(node->right, cd, depth + 1);
+            KDNode<T, K>* minNode = findMin(node->right, cd, depth + 1);
             node->point = minNode->point;
             node->right = removeRecursive(node->right, minNode->point, depth + 1);
         } else if (node->left != nullptr) {
-            KDNode<K, T>* minNode = findMin(node->left, cd, depth + 1);
+            KDNode<T, K>* minNode = findMin(node->left, cd, depth + 1);
             node->point = minNode->point;
             node->right = removeRecursive(node->left, minNode->point, depth + 1);
             node->left = nullptr;
@@ -152,18 +152,18 @@ KDNode<K, T>* KDTree<K, T>::removeRecursive(KDNode<K, T>* node, const std::array
     return node;
 }
 
-template <int K, typename T>
-void KDTree<K, T>::remove(const std::array<T, K>& p) {
+template <typename T, size_t K>
+void KDTree<T, K>::remove(const std::array<T, K>& p) {
     root = removeRecursive(root, p, 0);
 }
 
 // 打印KD-TREE的树形结构
-template <int K, typename T>
-void KDTree<K, T>::printSubtree(KDNode<K, T>* node, int depth) const {
+template <typename T, size_t K>
+void KDTree<T, K>::printSubtree(KDNode<T, K>* node, int depth) const {
     if (node == nullptr) return;
 
     std::cout << "[";
-    for (int i = 0; i < K; ++i) {
+    for (size_t i = 0; i < K; ++i) {
         std::cout << node->point[i] << (i == K - 1 ? "" : " | ");
     }
     std::cout << "]";
@@ -188,8 +188,8 @@ void KDTree<K, T>::printSubtree(KDNode<K, T>* node, int depth) const {
     }
 }
 
-template <int K, typename T>
-void KDTree<K, T>::rangeSearchRecursive(KDNode<K, T>* node, 
+template <typename T, size_t K>
+void KDTree<T, K>::rangeSearchRecursive(KDNode<T, K>* node, 
                             const std::array<T, K>& low, 
                             const std::array<T, K>& high, 
                             int depth, 
@@ -198,7 +198,7 @@ void KDTree<K, T>::rangeSearchRecursive(KDNode<K, T>* node,
 
     // 检查当前点是否在 [low, high] 指定的超矩形范围内
     bool inRange = true;
-    for (int i = 0; i < K; ++i) {
+    for (size_t i = 0; i < K; ++i) {
         if (node->point[i] < low[i] || node->point[i] > high[i]) {
             inRange = false;
             break;
@@ -217,16 +217,16 @@ void KDTree<K, T>::rangeSearchRecursive(KDNode<K, T>* node,
     }
 }
 
-template <int K, typename T>
-std::vector<std::array<T, K>> KDTree<K, T>::rangeSearch(const std::array<T, K>& low, 
+template <typename T, size_t K>
+std::vector<std::array<T, K>> KDTree<T, K>::rangeSearch(const std::array<T, K>& low, 
                                                         const std::array<T, K>& high) const {
     std::vector<std::array<T, K>> results;
     rangeSearchRecursive(root, low, high, 0, results);
     return results;
 }
 
-template <int K, typename T>
-void KDTree<K, T>::display() const {
+template <typename T, size_t K>
+void KDTree<T, K>::display() const {
     if (!root) {
         std::cout << "Heap is empty." << std::endl;
         return;

@@ -20,7 +20,7 @@ std::array<int, 4> parseIP(const std::string& ipStr) {
 }
 
 int main() {
-    KDTree<4, int> ipTree;
+    KDTree<int, 4> ipTree;
     std::ifstream inFile("ips.txt");
 
     if (!inFile) {

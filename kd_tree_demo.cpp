@@ -3,22 +3,16 @@
 #include <array>
 #include "kd_tree.hpp"
 
-// 定义维度和数据类型
-const int K_VAL = 2;
-using DataType = int;
-using Point = std::array<DataType, K_VAL>;
-
-// 连续读取K个坐标元素
-Point readPoint() {
-    Point p;
-    for (int i = 0; i < K_VAL; ++i) {
+std::array<int, 2> read2DPoint() {
+    std::array<int, 2> p;
+    for (int i = 0; i < 2; ++i) {
         if (!(std::cin >> p[i])) break;
     }
     return p;
 }
 
 int main() {
-    KDTree<K_VAL, DataType> kt;
+    KDTree<int, 2> kt;
     std::string cmd;
 
     std::cout << "2D-Tree CLI\nCommands: i(nsert) <v1 v2>, s(earch) <v1 v2>, d(elete) <v1 v2>, p(rint), q(uit)" << std::endl;
@@ -28,12 +22,12 @@ int main() {
         if (!(std::cin >> cmd)) break;
 
         if (cmd == "i") {
-            Point p = readPoint();
+            std::array<int, 2> p = read2DPoint();
             kt.insert(p);
             std::cout << "Inserted point." << std::endl;
         } 
         else if (cmd == "s") {
-            Point p = readPoint();
+            std::array<int, 2> p = read2DPoint();
             if (kt.search(p)) {
                 std::cout << "Found point." << std::endl;
             } else {
@@ -41,7 +35,7 @@ int main() {
             }
         } 
         else if (cmd == "d") {
-            Point p = readPoint();
+            std::array<int, 2> p = read2DPoint();
             kt.remove(p);
             std::cout << "Delete operation performed." << std::endl;
         } 
