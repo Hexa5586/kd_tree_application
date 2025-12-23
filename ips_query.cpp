@@ -9,8 +9,6 @@
 #include <algorithm>
 #include "kd_tree.hpp"
 
-// --- 通用解析与辅助工具 ---
-
 // IPv4解析
 std::array<int, 4> parseIPv4(const std::string& ipStr) {
     std::array<int, 4> addr = {0};
@@ -59,7 +57,7 @@ std::array<int, 16> parseIPv6(const std::string& ipStr) {
     return addr;
 }
 
-
+// IPv4模式
 void runIPv4(std::ifstream& inFile) {
     KDTree<int, 4> ipTree;
     std::string line;
@@ -101,7 +99,7 @@ void runIPv4(std::ifstream& inFile) {
     }
 }
 
-
+// IPv6模式
 void runIPv6(std::ifstream& inFile) {
     KDTree<int, 16> ipTree;
     std::string line;
@@ -155,6 +153,7 @@ int main() {
         return 1;
     }
 
+    // 读取首行，代表的是ips.txt中的IP版本
     std::string firstLine;
     if (!std::getline(inFile, firstLine)) return 1;
 

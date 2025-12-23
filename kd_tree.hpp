@@ -5,9 +5,7 @@
 #include <vector>
 #include <algorithm>
 
-/**
- * KDNode类模板
- */
+// KDNode类模板
 template <typename T, size_t K>
 class KDNode {
 public:
@@ -19,16 +17,12 @@ public:
         : point(p), left(nullptr), right(nullptr) {}
 };
 
-/**
- * KDTree类模板
- */
+// KDTree类模板
 template <typename T, size_t K>
 class KDTree {
-
 private:
     KDNode<T, K>* root;
 
-    // 内部辅助递归函数
     void clear(KDNode<T, K>* node);
     KDNode<T, K>* insertRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth);
     bool searchRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) const;
@@ -65,7 +59,7 @@ void KDTree<T, K>::clear(KDNode<T, K>* node) {
     delete node;
 }
 
-// 插入逻辑
+// 递归插入函数
 template <typename T, size_t K>
 KDNode<T, K>* KDTree<T, K>::insertRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) {
     if (node == nullptr) return new KDNode<T, K>(p);
@@ -79,12 +73,14 @@ KDNode<T, K>* KDTree<T, K>::insertRecursive(KDNode<T, K>* node, const std::array
     return node;
 }
 
+// 从根部递归插入，外部接口
+// 理想情况O(logn)，最坏情况O(n)
 template <typename T, size_t K>
 void KDTree<T, K>::insert(const std::array<T, K>& p) {
     root = insertRecursive(root, p, 0);
 }
 
-// 查找逻辑
+// 递归查找
 template <typename T, size_t K>
 bool KDTree<T, K>::searchRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) const {
     if (node == nullptr) return false;
@@ -97,6 +93,8 @@ bool KDTree<T, K>::searchRecursive(KDNode<T, K>* node, const std::array<T, K>& p
         return searchRecursive(node->right, p, depth + 1);
 }
 
+// 从根部递归查找，外部接口
+// 理想情况O(logn)，最坏情况O(n)
 template <typename T, size_t K>
 bool KDTree<T, K>::search(const std::array<T, K>& p) const {
     return searchRecursive(root, p, 0);
@@ -122,7 +120,8 @@ KDNode<T, K>* KDTree<T, K>::findMin(KDNode<T, K>* node, int dim, int depth) {
     return res;
 }
 
-// 删除逻辑
+// 递归删除节点
+// 删除部分的时间复杂度：O(n^(1-1/k))，在维度很大时可退化为近似O(n)
 template <typename T, size_t K>
 KDNode<T, K>* KDTree<T, K>::removeRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) {
     if (node == nullptr) return nullptr;
@@ -152,12 +151,53 @@ KDNode<T, K>* KDTree<T, K>::removeRecursive(KDNode<T, K>* node, const std::array
     return node;
 }
 
+// 删除某一节点，外部接口
 template <typename T, size_t K>
 void KDTree<T, K>::remove(const std::array<T, K>& p) {
     root = removeRecursive(root, p, 0);
 }
 
-// 打印KD-TREE的树形结构
+// 递归进行范围查找
+// O(n^(1-1/k)+m)，在维度很大时可退化为近似O(n+m)
+template <typename T, size_t K>
+void KDTree<T, K>::rangeSearchRecursive(KDNode<T, K>* node, 
+                            const std::array<T, K>& low, 
+                            const std::array<T, K>& high, 
+                            int depth, 
+                            std::vector<std::array<T, K>>& results) const {
+    if (node == nullptr) return;
+
+    // 检查当前点是否在[low, high]指定的超矩形范围内
+    bool inRange = true;
+    for (size_t i = 0; i < K; ++i) {
+        if (node->point[i] < low[i] || node->point[i] > high[i]) {
+            inRange = false;
+            break;
+        }
+    }
+    if (inRange) results.push_back(node->point);
+
+    int cd = depth % K;
+    // 剪枝：如果当前节点的分割维度值>=范围最小值，则去左子树找
+    if (node->point[cd] >= low[cd]) {
+        rangeSearchRecursive(node->left, low, high, depth + 1, results);
+    }
+    // 剪枝：如果当前节点的分割维度值<=范围最大值，则去右子树找
+    if (node->point[cd] <= high[cd]) {
+        rangeSearchRecursive(node->right, low, high, depth + 1, results);
+    }
+}
+
+// 范围查找，外部接口
+template <typename T, size_t K>
+std::vector<std::array<T, K>> KDTree<T, K>::rangeSearch(const std::array<T, K>& low, 
+                                                        const std::array<T, K>& high) const {
+    std::vector<std::array<T, K>> results;
+    rangeSearchRecursive(root, low, high, 0, results);
+    return results;
+}
+
+// 递归地打印KD树的树形结构
 template <typename T, size_t K>
 void KDTree<T, K>::printSubtree(KDNode<T, K>* node, int depth) const {
     if (node == nullptr) return;
@@ -188,43 +228,7 @@ void KDTree<T, K>::printSubtree(KDNode<T, K>* node, int depth) const {
     }
 }
 
-template <typename T, size_t K>
-void KDTree<T, K>::rangeSearchRecursive(KDNode<T, K>* node, 
-                            const std::array<T, K>& low, 
-                            const std::array<T, K>& high, 
-                            int depth, 
-                            std::vector<std::array<T, K>>& results) const {
-    if (node == nullptr) return;
-
-    // 检查当前点是否在 [low, high] 指定的超矩形范围内
-    bool inRange = true;
-    for (size_t i = 0; i < K; ++i) {
-        if (node->point[i] < low[i] || node->point[i] > high[i]) {
-            inRange = false;
-            break;
-        }
-    }
-    if (inRange) results.push_back(node->point);
-
-    int cd = depth % K;
-    // 剪枝逻辑：如果当前节点的分割维度值 >= 范围最小值，则左子树可能存在符合条件的点
-    if (node->point[cd] >= low[cd]) {
-        rangeSearchRecursive(node->left, low, high, depth + 1, results);
-    }
-    // 剪枝逻辑：如果当前节点的分割维度值 <= 范围最大值，则右子树可能存在符合条件的点
-    if (node->point[cd] <= high[cd]) {
-        rangeSearchRecursive(node->right, low, high, depth + 1, results);
-    }
-}
-
-template <typename T, size_t K>
-std::vector<std::array<T, K>> KDTree<T, K>::rangeSearch(const std::array<T, K>& low, 
-                                                        const std::array<T, K>& high) const {
-    std::vector<std::array<T, K>> results;
-    rangeSearchRecursive(root, low, high, 0, results);
-    return results;
-}
-
+// 打印整棵树的树形结构，外部接口
 template <typename T, size_t K>
 void KDTree<T, K>::display() const {
     if (!root) {
