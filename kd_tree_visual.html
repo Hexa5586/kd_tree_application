@@ -181,6 +181,21 @@
                 else node.right = this.delete(node.right, point, depth + 1);
                 return node;
             }
+
+            updateBounds(node, bounds) {
+                if (!node) return;
+                node.bounds = [...bounds]; // 更新当前节点边界
+                const ax = node.axis;
+                const leftBounds = [...bounds];
+                const rightBounds = [...bounds];
+                
+                // 根据当前节点的切割线，划分左右子空间的边界
+                leftBounds[ax * 2 + 1] = node.point[ax];
+                rightBounds[ax * 2] = node.point[ax];
+                
+                this.updateBounds(node.left, leftBounds);
+                this.updateBounds(node.right, rightBounds);
+            }
         }
 
         /** 布局、绘图 **/
@@ -306,6 +321,12 @@
             const node = findById(tree.root, selectedId);
             if (node) {
                 tree.root = tree.delete(tree.root, node.point, 0);
+                
+                // 如果树还不为空，重新计算所有节点的空间边界
+                if (tree.root) {
+                    tree.updateBounds(tree.root, [0, 100, 0, 100]);
+                }
+                
                 render(null);
             }
         }

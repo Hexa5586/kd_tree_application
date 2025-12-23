@@ -1,15 +1,17 @@
 #include <iostream>
-#include <cstdio>
 #include <fstream>
 #include <string>
 #include <vector>
+#include <array>
 #include <sstream>
 #include <cstdint>
+#include <iomanip>
+#include <algorithm>
 #include "kd_tree.hpp"
 
-// 解析 IP 字符串为 std::array<int, 4>
-std::array<int, 4> parseIP(const std::string& ipStr) {
-    std::array<int, 4> addr;
+// IPv4解析
+std::array<int, 4> parseIPv4(const std::string& ipStr) {
+    std::array<int, 4> addr = {0};
     std::stringstream ss(ipStr);
     std::string item;
     int i = 0;
@@ -19,70 +21,153 @@ std::array<int, 4> parseIP(const std::string& ipStr) {
     return addr;
 }
 
-int main() {
-    KDTree<int, 4> ipTree;
-    std::ifstream inFile("ips.txt");
+// IPv6解析，支持::连写的形式
+std::array<int, 16> parseIPv6(const std::string& ipStr) {
+    std::array<int, 16> addr = {0};
+    std::vector<std::string> parts;
+    std::string s = ipStr;
+    size_t doubleColonPos = s.find("::");
 
-    if (!inFile) {
-        std::cerr << "Cannot find ./ips.txt." << std::endl;
-        return 1;
+    auto parseHexPart = [](const std::string& section, std::vector<uint8_t>& out) {
+        std::stringstream ss(section);
+        std::string item;
+        while (std::getline(ss, item, ':')) {
+            if (item.empty()) continue;
+            uint32_t val = std::stoul(item, nullptr, 16);
+            out.push_back((val >> 8) & 0xFF);
+            out.push_back(val & 0xFF);
+        }
+    };
+
+    if (doubleColonPos != std::string::npos) {
+        std::vector<uint8_t> left, right;
+        parseHexPart(s.substr(0, doubleColonPos), left);
+        parseHexPart(s.substr(doubleColonPos + 2), right);
+        
+        int middleZeros = 16 - left.size() - right.size();
+        int idx = 0;
+        for (auto b : left) addr[idx++] = b;
+        for (int i = 0; i < middleZeros; ++i) addr[idx++] = 0;
+        for (auto b : right) addr[idx++] = b;
+    } else {
+        std::vector<uint8_t> all;
+        parseHexPart(s, all);
+        for (int i = 0; i < 16 && i < (int)all.size(); ++i) addr[i] = all[i];
     }
+    return addr;
+}
 
-    // 读取并插入数据
+// IPv4模式
+void runIPv4(std::ifstream& inFile) {
+    KDTree<int, 4> ipTree;
     std::string line;
     while (std::getline(inFile, line)) {
-        if (!line.empty()) {
-            ipTree.insert(parseIP(line));
-        }
+        if (!line.empty()) ipTree.insert(parseIPv4(line));
     }
     inFile.close();
 
-    // 处理用户输入的子网
-    std::string subnetInput;
-    std::cout << "Subnet (XX.XX.XX.XX/XX) or q to quit: ";
-    std::cin >> subnetInput;
+    std::string input;
+    while (true) {
+        std::cout << "IPv4 Subnet (CIDR) or q: ";
+        std::cin >> input;
+        if (input == "q") break;
 
-    while (subnetInput != "q") {
-        size_t slash = subnetInput.find('/');
-        if (slash == std::string::npos) {
-            std::cerr << "Unknown subnet syntax." << std::endl;
-            return 1;
-        }
+        size_t slash = input.find('/');
+        if (slash == std::string::npos) continue;
 
-        std::string baseIp = subnetInput.substr(0, slash);
-        int prefix = std::stoi(subnetInput.substr(slash + 1));
+        std::array<int, 4> base = parseIPv4(input.substr(0, slash));
+        int prefix = std::stoi(input.substr(slash + 1));
 
-        // 将基础 IP 转为 32 位整数处理边界
-        std::array<int, 4> baseAddr = parseIP(baseIp);
         uint32_t ipUint = 0;
-        for (int i = 0; i < 4; ++i) {
-            ipUint = (ipUint << 8) | (static_cast<uint8_t>(baseAddr[i]));
-        }
+        for (int i = 0; i < 4; ++i) ipUint = (ipUint << 8) | (uint8_t)base[i];
 
-        // 计算子网范围
         uint32_t mask = (prefix == 0) ? 0 : (0xFFFFFFFF << (32 - prefix));
-        uint32_t startIp = ipUint & mask;
-        uint32_t endIp = startIp | (~mask);
+        uint32_t start = ipUint & mask;
+        uint32_t end = start | (~mask);
 
-        // 将边界转回 4-D 坐标点
-        std::array<int, 4> lowPoint, highPoint;
+        std::array<int, 4> low, high;
         for (int i = 0; i < 4; ++i) {
-            lowPoint[3 - i] = (startIp >> (i * 8)) & 0xFF;
-            highPoint[3 - i] = (endIp >> (i * 8)) & 0xFF;
+            low[i] = (start >> (24 - i * 8)) & 0xFF;
+            high[i] = (end >> (24 - i * 8)) & 0xFF;
         }
 
-        // 执行 4-D Tree 范围查找
-        std::vector<std::array<int, 4>> results = ipTree.rangeSearch(lowPoint, highPoint);
-
-        // 打印输出
+        auto results = ipTree.rangeSearch(low, high);
         for (const auto& ip : results) {
             printf("%d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
         }
-        std::cout << results.size() << " IP(s) found." << std::endl;
-        
-        std::cout << "Subnet (XX.XX.XX.XX/XX) or q to quit: ";
-        std::cin >> subnetInput;
+        std::cout << results.size() << " IP(s) found.\n" << std::endl;
     }
-    
+}
+
+// IPv6模式
+void runIPv6(std::ifstream& inFile) {
+    KDTree<int, 16> ipTree;
+    std::string line;
+    while (std::getline(inFile, line)) {
+        if (!line.empty()) ipTree.insert(parseIPv6(line));
+    }
+    inFile.close();
+
+    std::string input;
+    while (true) {
+        std::cout << "IPv6 Subnet (CIDR) or q: ";
+        std::cin >> input;
+        if (input == "q") break;
+
+        size_t slash = input.find('/');
+        if (slash == std::string::npos) continue;
+
+        std::array<int, 16> base = parseIPv6(input.substr(0, slash));
+        int prefix = std::stoi(input.substr(slash + 1));
+
+        std::array<int, 16> low, high;
+        for (int i = 0; i < 16; ++i) {
+            int bitOffset = i * 8;
+            if (prefix >= bitOffset + 8) {
+                low[i] = high[i] = base[i];
+            } else if (prefix <= bitOffset) {
+                low[i] = 0; high[i] = 255;
+            } else {
+                int bits = prefix - bitOffset;
+                uint8_t mask = 0xFF << (8 - bits);
+                low[i] = base[i] & mask;
+                high[i] = base[i] | (~mask & 0xFF);
+            }
+        }
+
+        auto results = ipTree.rangeSearch(low, high);
+        for (const auto& ip : results) {
+            for (int i = 0; i < 16; i += 2) {
+                printf("%02x%02x%c", ip[i], ip[i+1], (i == 14 ? '\n' : ':'));
+            }
+        }
+        std::cout << results.size() << " IP(s) found.\n" << std::endl;
+    }
+}
+
+
+int main() {
+    std::ifstream inFile("ips.txt");
+    if (!inFile) {
+        std::cerr << "Error: Cannot open ips.txt" << std::endl;
+        return 1;
+    }
+
+    // 读取首行，代表的是ips.txt中的IP版本
+    std::string firstLine;
+    if (!std::getline(inFile, firstLine)) return 1;
+
+    int version = std::stoi(firstLine);
+    if (version == 4) {
+        std::cout << "Detected IPv4 mode." << std::endl;
+        runIPv4(inFile);
+    } else if (version == 6) {
+        std::cout << "Detected IPv6 mode." << std::endl;
+        runIPv6(inFile);
+    } else {
+        std::cerr << "Unsupported version in first line: " << version << std::endl;
+        return 1;
+    }
+
     return 0;
 }
