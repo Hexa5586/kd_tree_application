@@ -60,11 +60,14 @@ std::array<int, 16> parseIPv6(const std::string& ipStr) {
 // IPv4模式
 void runIPv4(std::ifstream& inFile) {
     KDTree<int, 4> ipTree;
+    std::vector<std::array<int, 4>> ipv4s;
+
     std::string line;
     while (std::getline(inFile, line)) {
-        if (!line.empty()) ipTree.insert(parseIPv4(line));
+        if (!line.empty()) ipv4s.push_back(parseIPv4(line));
     }
     inFile.close();
+    ipTree.build(ipv4s);
 
     std::string input;
     while (true) {
@@ -111,12 +114,15 @@ void runIPv4(std::ifstream& inFile) {
 // IPv6模式
 void runIPv6(std::ifstream& inFile) {
     KDTree<int, 16> ipTree;
+    std::vector<std::array<int, 16>> ipv6s;
+
     std::string line;
     while (std::getline(inFile, line)) {
-        if (!line.empty()) ipTree.insert(parseIPv6(line));
+        if (!line.empty()) ipv6s.push_back(parseIPv6(line));
     }
     inFile.close();
-
+    ipTree.build(ipv6s);
+    
     std::string input;
     while (true) {
         std::cout << "IPv6 Subnet (CIDR) or q: ";
@@ -178,10 +184,10 @@ int main() {
 
     int version = std::stoi(firstLine);
     if (version == 4) {
-        std::cout << "Detected IPv4 mode." << std::endl;
+        std::cout << "Detected IPv4 mode. Loading searching tree may take a while..." << std::endl;
         runIPv4(inFile);
     } else if (version == 6) {
-        std::cout << "Detected IPv6 mode." << std::endl;
+        std::cout << "Detected IPv6 mode. Loading searching tree may take a while..." << std::endl;
         runIPv6(inFile);
     } else {
         std::cerr << "Unsupported version in first line: " << version << std::endl;

@@ -1,56 +1,73 @@
 #include <iostream>
-#include <fstream>
+#include <cstdio>
 #include <string>
 #include <random>
 #include <vector>
-#include <iomanip>
-#include <sstream>
 
-// 将32位无符号整数转为IPv4字符串
-std::string intToIp(uint32_t ip) {
-    return std::to_string((ip >> 24) & 0xFF) + "." +
-           std::to_string((ip >> 16) & 0xFF) + "." +
-           std::to_string((ip >> 8) & 0xFF) + "." +
-           std::to_string(ip & 0xFF);
+const char HEX_CHARS[] = "0123456789abcdef";
+
+void writeIPv4(FILE* fp, uint32_t ip) {
+    char buf[16];
+    int len = sprintf(buf, "%u.%u.%u.%u\n",
+                      (ip >> 24) & 0xFF,
+                      (ip >> 16) & 0xFF,
+                      (ip >> 8) & 0xFF,
+                      ip & 0xFF);
+    fwrite(buf, 1, len, fp);
 }
 
-// 生成随机IPv6字符串
-std::string generateIPv6String(std::mt19937& gen) {
-    std::uniform_int_distribution<uint32_t> dis(0, 0xFFFF);
-    std::stringstream ss;
-    ss << std::hex << std::setfill('0');
+void writeIPv6(FILE* fp, std::mt19937& gen) {
+    char buf[40];
+    // 每次生成32位随机数，提供给2个IPv6段
+    std::uniform_int_distribution<uint32_t> dis(0, 0xFFFFFFFF);
+    
     for (int i = 0; i < 8; ++i) {
-        ss << std::setw(4) << dis(gen);
-        if (i < 7) ss << ":";
+        static uint32_t randVal;
+        if (i % 2 == 0) randVal = dis(gen); // 只在偶数次调用
+        else randVal >>= 16;
+
+        uint16_t section = static_cast<uint16_t>(randVal & 0xFFFF);
+        
+        // 字符映射
+        int base = i * 5;
+        buf[base]     = HEX_CHARS[(section >> 12) & 0xF];
+        buf[base + 1] = HEX_CHARS[(section >> 8) & 0xF];
+        buf[base + 2] = HEX_CHARS[(section >> 4) & 0xF];
+        buf[base + 3] = HEX_CHARS[section & 0xF];
+        
+        if (i < 7) buf[base + 4] = ':';
     }
-    return ss.str();
+
+    buf[39] = '\n';
+    fwrite(buf, 1, 40, fp);
 }
 
 void generate_ips(int version, long long count) {
-    const std::string output_file = "./ips.txt";
+    const char* output_file = "./ips.txt";
     std::cout << "Generating " << count << " IPv" << version << " addresses to " << output_file << "..." << std::endl;
 
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<uint32_t> disV4(0, 0xFFFFFFFF);
 
-    std::ofstream outfile(output_file);
-    if (!outfile.is_open()) {
+    FILE* fp = fopen(output_file, "w");
+    if (!fp) {
         std::cerr << "Error: Could not open " << output_file << " for writing." << std::endl;
         return;
     }
 
-    // 设置缓冲区
-    std::vector<char> write_buffer(65536);
-    outfile.rdbuf()->pubsetbuf(write_buffer.data(), write_buffer.size());
+    // 设置一个较大的系统级缓冲区
+    char setbuf_buffer[65536];
+    setvbuf(fp, setbuf_buffer, _IOFBF, sizeof(setbuf_buffer));
 
     // 首行写入版本号
-    outfile << version << "\n";
+    fprintf(fp, "%d\n", version);
+
     for (long long i = 0; i < count; ++i) {
         if (version == 4) {
-            outfile << intToIp(disV4(gen)) << "\n";
+            writeIPv4(fp, disV4(gen));
         } else {
-            outfile << generateIPv6String(gen) << "\n";
+            writeIPv6(fp, gen);
         }
 
         if ((i + 1) % 100000 == 0 || i == count - 1) {
@@ -58,7 +75,7 @@ void generate_ips(int version, long long count) {
         }
     }
 
-    outfile.close();
+    fclose(fp);
     std::cout << "\nFinished." << std::endl;
 }
 
@@ -66,7 +83,6 @@ int main(int argc, char* argv[]) {
     int version = 4;
     long long count = 100000;
 
-    // 命令行参数
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-v" && i + 1 < argc) {

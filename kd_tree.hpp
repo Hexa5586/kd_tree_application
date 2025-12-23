@@ -23,6 +23,7 @@ class KDTree {
 private:
     KDNode<T, K>* root;
 
+    KDNode<T, K>* buildRecursive(std::vector<std::array<T, K>>& points, int left, int right, int depth);
     void clear(KDNode<T, K>* node);
     KDNode<T, K>* insertRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth);
     bool searchRecursive(KDNode<T, K>* node, const std::array<T, K>& p, int depth) const;
@@ -35,6 +36,7 @@ public:
     KDTree();
     ~KDTree();
 
+    void build(const std::vector<std::array<T, K>>& pointList);
     void insert(const std::array<T, K>& p);
     bool search(const std::array<T, K>& p) const;
     void remove(const std::array<T, K>& p);
@@ -49,6 +51,41 @@ KDTree<T, K>::KDTree() : root(nullptr) {}
 template <typename T, size_t K>
 KDTree<T, K>::~KDTree() {
     clear(root);
+}
+
+// 根据现有的points数组递归建树
+template <typename T, size_t K>
+KDNode<T, K>* KDTree<T, K>::buildRecursive(std::vector<std::array<T, K>>& points, int left, int right, int depth) {
+    if (left >= right) return nullptr;
+
+    int axis = depth % K;
+    int mid = left + (right - left) / 2;
+    // 使用nth_element进行部分排序
+    std::nth_element(points.begin() + left, 
+                     points.begin() + mid, 
+                     points.begin() + right,
+                     [axis](const std::array<T, K>& a, const std::array<T, K>& b) {
+                         return a[axis] < b[axis];
+                     });
+
+    // 创建节点
+    KDNode<T, K>* node = new KDNode<T, K>(points[mid]);
+
+    // 递归构建左右子树
+    node->left = buildRecursive(points, left, mid, depth + 1);
+    node->right = buildRecursive(points, mid + 1, right, depth + 1);
+
+    return node;
+}
+
+// 从数组建树，外部接口
+template <typename T, size_t K>
+void KDTree<T, K>::build(const std::vector<std::array<T, K>>& pointList) {
+    if (pointList.empty()) return;
+    clear(root);
+    // 原数据副本
+    std::vector<std::array<T, K>> points = pointList;
+    root = buildRecursive(points, 0, points.size(), 0);
 }
 
 template <typename T, size_t K>
