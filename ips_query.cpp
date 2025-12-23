@@ -92,10 +92,19 @@ void runIPv4(std::ifstream& inFile) {
         }
 
         auto results = ipTree.rangeSearch(low, high);
-        for (const auto& ip : results) {
-            printf("%d.%d.%d.%d\n", ip[0], ip[1], ip[2], ip[3]);
+        
+        // 结果写入到文件
+        std::ofstream outFile("ips_query_result.txt", std::ios::trunc);
+        if (outFile.is_open()) {
+            for (const auto& ip : results) {
+                char buf[64];
+                sprintf(buf, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+                outFile << buf << "\n";
+            }
+            outFile.close();
         }
-        std::cout << results.size() << " IP(s) found.\n" << std::endl;
+
+        std::cout << results.size() << " IP(s) found and saved to ips_query_result.txt\n" << std::endl;
     }
 }
 
@@ -136,12 +145,22 @@ void runIPv6(std::ifstream& inFile) {
         }
 
         auto results = ipTree.rangeSearch(low, high);
-        for (const auto& ip : results) {
-            for (int i = 0; i < 16; i += 2) {
-                printf("%02x%02x%c", ip[i], ip[i+1], (i == 14 ? '\n' : ':'));
+
+        // 结果写入到文件
+        std::ofstream outFile("ips_query_result.txt", std::ios::trunc);
+        if (outFile.is_open()) {
+            for (const auto& ip : results) {
+                char buf[128];
+                int pos = 0;
+                for (int i = 0; i < 16; i += 2) {
+                    pos += sprintf(buf + pos, "%02x%02x%c", ip[i], ip[i+1], (i == 14 ? '\0' : ':'));
+                }
+                outFile << buf << "\n";
             }
+            outFile.close();
         }
-        std::cout << results.size() << " IP(s) found.\n" << std::endl;
+
+        std::cout << results.size() << " IP(s) found and saved to ips_query_result.txt\n" << std::endl;
     }
 }
 

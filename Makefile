@@ -40,4 +40,4 @@ run: all
 	./$(TARGET3)$(EXE)
 
 clean:
-	$(RM) $(call FIX_PATH,*.o $(TARGET1)$(EXE) $(TARGET2)$(EXE) $(TARGET3)$(EXE)) ips.txt $(CLEAN_QUERY)
+	$(RM) $(call FIX_PATH,*.o $(TARGET1)$(EXE) $(TARGET2)$(EXE) $(TARGET3)$(EXE)) ips.txt ips_query_result.txt $(CLEAN_QUERY)
